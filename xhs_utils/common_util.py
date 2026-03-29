@@ -7,6 +7,23 @@ def load_env():
     cookies_str = os.getenv('COOKIES')
     return cookies_str
 
+def load_mysql_config():
+    mysql_host = os.getenv('MYSQL_HOST', '')
+    mysql_user = os.getenv('MYSQL_USER', '')
+    mysql_password = os.getenv('MYSQL_PASSWORD', '')
+    mysql_database = os.getenv('MYSQL_DATABASE', '')
+    mysql_port = int(os.getenv('MYSQL_PORT', '3306'))
+    if not all([mysql_host, mysql_user, mysql_password, mysql_database]):
+        return None
+    return {
+        'host': mysql_host,
+        'port': mysql_port,
+        'user': mysql_user,
+        'password': mysql_password,
+        'database': mysql_database,
+    }
+
+
 def init():
     media_base_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../datas/media_datas'))
     excel_base_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../datas/excel_datas'))
