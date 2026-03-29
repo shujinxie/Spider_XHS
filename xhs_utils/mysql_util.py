@@ -3,16 +3,28 @@ import pymysql
 from loguru import logger
 
 
-def get_mysql_connection(mysql_config: dict):
-    return pymysql.connect(
-        host=mysql_config['host'],
-        port=int(mysql_config.get('port', 3306)),
-        user=mysql_config['user'],
-        password=mysql_config['password'],
-        database=mysql_config['database'],
-        charset='utf8mb4',
-        autocommit=False,
-    )
+def get_mysql_connection(mysql_config: dict, include_database: bool = True):
+    kwargs = {
+        'host': mysql_config['host'],
+        'port': int(mysql_config.get('port', 3306)),
+        'user': mysql_config['user'],
+        'password': mysql_config['password'],
+        'charset': 'utf8mb4',
+        'autocommit': False,
+    }
+    if include_database:
+        kwargs['database'] = mysql_config['database']
+    return pymysql.connect(**kwargs)
+
+
+def ensure_database(mysql_config: dict):
+    conn = get_mysql_connection(mysql_config, include_database=False)
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute(f"CREATE DATABASE IF NOT EXISTS `{mysql_config['database']}` DEFAULT CHARACTER SET utf8mb4;")
+        conn.commit()
+    finally:
+        conn.close()
 
 
 def init_mysql_tables(conn):
@@ -71,6 +83,10 @@ def init_mysql_tables(conn):
 
 
 def save_notes_and_comments_to_mysql(notes, comments, mysql_config: dict):
+    if not mysql_config or not mysql_config.get('database'):
+        raise ValueError('MySQL 配置缺失，至少需要 host/user/password/database')
+
+    ensure_database(mysql_config)
     conn = get_mysql_connection(mysql_config)
     try:
         init_mysql_tables(conn)

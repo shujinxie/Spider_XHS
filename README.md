@@ -163,3 +163,8 @@ MYSQL_DATABASE=xhs_spider
 - `xhs_comments`
 
 可直接用 Navicat 连接对应库查看。
+
+
+### 运行前依赖提示
+- 必须先执行 `npm install`，否则会报 `Cannot find module 'crypto-js'`。
+- MySQL 模式下会自动 `CREATE DATABASE IF NOT EXISTS`，但前提是数据库账号有建库权限。

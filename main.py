@@ -82,6 +82,7 @@ class Data_Spider:
             raise ValueError('end_date 不能早于 start_date')
 
         candidate_urls = []
+        failed_msgs = []
         for keyword in keywords:
             success, msg, notes = self.xhs_apis.search_some_note(
                 query=keyword,
@@ -96,11 +97,18 @@ class Data_Spider:
                 proxies=proxies,
             )
             if not success:
+                failed_msgs.append(str(msg))
                 logger.warning(f"关键词 {keyword} 搜索失败: {msg}")
                 continue
             note_items = [n for n in notes if n.get('model_type') == 'note']
             for note in note_items:
                 candidate_urls.append(f"https://www.xiaohongshu.com/explore/{note['id']}?xsec_token={note['xsec_token']}")
+
+
+        if not candidate_urls and failed_msgs and all('crypto-js' in m for m in failed_msgs):
+            raise RuntimeError(
+                "Node 依赖缺失：检测到 crypto-js 模块不存在。请先在项目根目录执行 npm install，再运行 python main.py"
+            )
 
         dedup_urls = list(dict.fromkeys(candidate_urls))
         logger.info(f'候选笔记数量（去重后）: {len(dedup_urls)}')
@@ -141,6 +149,10 @@ class Data_Spider:
 
         label = self._date_label(start_day, end_day)
         excel_name = f'通胀预期_{label}'
+
+        if not note_list:
+            logger.warning('未抓取到符合关键词与时间范围的笔记，跳过导出和入库。')
+            return note_list, comment_list
 
         if save_choice in ['excel', 'all']:
             file_path = os.path.abspath(os.path.join(base_path['excel'], f'{excel_name}.xlsx'))
