@@ -169,3 +169,40 @@ MYSQL_DATABASE=xhs_spider
 - 必须先执行 `npm install`，否则会报 `Cannot find module 'crypto-js'`。
 - MySQL 模式下会自动 `CREATE DATABASE IF NOT EXISTS`，但前提是数据库账号有建库权限。
 
+
+
+### 存储模式切换
+在 `main.py` 里通过 `storage_backend` 切换：`mysql / excel / all / media`。
+
+当选择 Excel 时，文件名格式为：`通胀文本xhs_开始日期.xlsx`（例如 `通胀文本xhs_2026-03-01.xlsx`）。
+
+### Git 合并冲突处理（merge conflicts）
+当你拉取最新代码后出现冲突，可按以下步骤处理：
+
+```bash
+git fetch origin
+git checkout work
+# 任选其一：merge 或 rebase
+# 方式1：merge
+git merge origin/work
+# 方式2：rebase
+git rebase origin/work
+```
+
+若出现冲突：
+1. 打开冲突文件，删除 `<<<<<<<` / `=======` / `>>>>>>>` 标记并保留正确内容。
+2. 处理后执行：
+```bash
+git add <冲突文件>
+# 如果是 merge
+git commit -m "resolve merge conflicts"
+# 如果是 rebase
+git rebase --continue
+```
+
+若你只想把本次功能更新到自己的分支，也可以直接：
+```bash
+git cherry-pick 0300042
+```
+上面的 commit 是本项目“边爬边入库 + Excel 命名/切换”的提交。
+
