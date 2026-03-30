@@ -218,3 +218,22 @@ git cherry-pick 0300042
   - 时间预筛后候选数量（去重后）
   - 搜索阶段超出时间范围跳过数量
   - 搜索阶段无时间字段跳过数量
+
+
+### 只合并了部分文件怎么办
+如果 merge 后只看到少量文件变更（例如只改了 `xhs_utils/common_util.py` 等），建议按 commit 补齐：
+
+```bash
+# 先拉取最新
+git fetch origin
+# 在你的工作分支补齐关键提交（按时间顺序）
+git cherry-pick ec4c815
+git cherry-pick 0448db6
+git cherry-pick dbf1980
+```
+
+若出现冲突，解决后执行：
+```bash
+git add <冲突文件>
+git cherry-pick --continue
+```

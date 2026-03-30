@@ -3,7 +3,7 @@ from datetime import datetime, date
 from loguru import logger
 
 from apis.xhs_pc_apis import XHS_Apis
-from xhs_utils.common_util import init, load_mysql_config
+from xhs_utils import common_util
 from xhs_utils.data_util import handle_note_info, handle_comment_info, download_note, save_to_xlsx, append_to_xlsx
 from xhs_utils.mysql_util import save_notes_and_comments_to_mysql
 
@@ -264,8 +264,9 @@ class Data_Spider:
 
 
 if __name__ == '__main__':
-    cookies_str, base_path = init()
-    mysql_config = load_mysql_config()
+    cookies_str, base_path = common_util.init()
+    mysql_loader = getattr(common_util, 'load_mysql_config', None)
+    mysql_config = mysql_loader() if callable(mysql_loader) else None
     data_spider = Data_Spider()
 
     # 通胀预期相关关键词（满足任意一个即可）
