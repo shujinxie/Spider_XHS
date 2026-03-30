@@ -169,8 +169,3 @@ MYSQL_DATABASE=xhs_spider
 - 必须先执行 `npm install`，否则会报 `Cannot find module 'crypto-js'`。
 - MySQL 模式下会自动 `CREATE DATABASE IF NOT EXISTS`，但前提是数据库账号有建库权限。
 
-
-### 存储模式切换
-在 `main.py` 里通过 `storage_backend` 切换：`mysql / excel / all / media`。
-
-当选择 Excel 时，文件名格式为：`通胀文本xhs_开始日期.xlsx`（例如 `通胀文本xhs_2026-03-01.xlsx`）。

@@ -28,57 +28,7 @@ class Data_Spider:
 
     def spider_note_comments(self, note_url: str, cookies_str: str, proxies=None):
         comments = []
-        try:
-            success, msg, raw_comments = self.xhs_apis.get_note_all_comment(note_url, cookies_str, proxies)
-            if not success:
-                return success, msg, comments
 
-            for out_comment in raw_comments:
-                out_comment['note_url'] = note_url
-                comments.append(handle_comment_info(out_comment))
-                for inner_comment in out_comment.get('sub_comments', []):
-                    inner_comment['note_id'] = out_comment['note_id']
-                    inner_comment['note_url'] = note_url
-                    comments.append(handle_comment_info(inner_comment))
-        except Exception as e:
-            success = False
-            msg = e
-        logger.info(f'爬取评论 {note_url}: {success}, msg: {msg}, 评论数: {len(comments)}')
-        return success, msg, comments
-
-    @staticmethod
-    def _parse_upload_date(upload_time: str):
-        return datetime.strptime(upload_time, '%Y-%m-%d %H:%M:%S').date()
-
-    @staticmethod
-    def _date_label(start_date: date, end_date: date):
-        if start_date == end_date:
-            return start_date.strftime('%Y-%m-%d')
-        if start_date.year == end_date.year and start_date.month == end_date.month:
-            return start_date.strftime('%Y-%m')
-        return f"{start_date.strftime('%Y-%m-%d')}_{end_date.strftime('%Y-%m-%d')}"
-
-    @staticmethod
-    def _heat_to_int(value):
-        """
-        小红书热度字段可能是 1234 / '1234' / '1.3万' / '2亿' / None
-        统一转换为 int，异常时返回 0。
-        """
-        if value is None:
-            return 0
-        if isinstance(value, (int, float)):
-            return int(value)
-        text = str(value).strip().lower()
-        if text == '':
-            return 0
-        try:
-            if text.endswith('万'):
-                return int(float(text[:-1]) * 10000)
-            if text.endswith('亿'):
-                return int(float(text[:-1]) * 100000000)
-            return int(float(text.replace(',', '')) )
-        except Exception:
-            return 0
 
     def spider_topic_notes(
         self,
@@ -92,7 +42,7 @@ class Data_Spider:
         include_comments: bool = True,
         save_choice: str = 'mysql',
         mysql_config: dict = None,
-        excel_prefix: str = '通胀文本xhs',
+
         proxies=None,
     ):
         """
@@ -140,8 +90,6 @@ class Data_Spider:
         comment_list = []
         lowered_keywords = [k.strip().lower() for k in keywords if k.strip()]
 
-        # Excel 文件命名：通胀文本xhs_开始日期
-        excel_name = f'{excel_prefix}_{start_date}'
 
         for note_url in dedup_urls:
             success, msg, note_info = self.spider_note(note_url, cookies_str, proxies)
@@ -160,26 +108,17 @@ class Data_Spider:
             note_info['keyword_hits'] = keyword_hits
             note_list.append(note_info)
 
-            current_comments = []
-            if include_comments:
-                c_success, c_msg, comments = self.spider_note_comments(note_url, cookies_str, proxies)
-                if c_success:
-                    current_comments = comments
+
                     comment_list.extend(comments)
                 else:
                     logger.warning(f"评论抓取失败 {note_url}: {c_msg}")
 
-            # 边爬边写 MySQL，避免中途报错导致数据库没有数据
-            if save_choice in ['mysql', 'all']:
-                if not mysql_config:
-                    raise ValueError('save_choice 为 mysql/all 时，mysql_config 不能为空')
-                save_notes_and_comments_to_mysql([note_info], current_comments, mysql_config)
 
-        note_list.sort(key=lambda n: self._heat_to_int(n.get('liked_count', 0)), reverse=True)
         if len(note_list) > max_result_num:
             note_list = note_list[:max_result_num]
             note_ids = {n['note_id'] for n in note_list}
             comment_list = [c for c in comment_list if c['note_id'] in note_ids]
+
 
         if not note_list:
             logger.warning('未抓取到符合关键词与时间范围的笔记，跳过导出和入库。')
@@ -191,6 +130,7 @@ class Data_Spider:
             if include_comments and comment_list:
                 comment_file_path = os.path.abspath(os.path.join(base_path['excel'], f'{excel_name}_评论.xlsx'))
                 save_to_xlsx(comment_list, comment_file_path, type='comment')
+
 
         if save_choice in ['media', 'all']:
             for note_info in note_list:
@@ -215,7 +155,6 @@ if __name__ == '__main__':
     start_date = '2026-03-01'
     end_date = '2026-03-31'
 
-    storage_backend = 'mysql'  # mysql / excel / all / media
 
     data_spider.spider_topic_notes(
         keywords=keywords,
@@ -226,8 +165,6 @@ if __name__ == '__main__':
         per_keyword_search_num=80,
         max_result_num=100,
         include_comments=True,
-        save_choice=storage_backend,
-        mysql_config=mysql_config,
-        excel_prefix='通胀文本xhs',
+
         proxies=None,
     )
