@@ -15,6 +15,7 @@ def load_mysql_config():
     mysql_port = int(os.getenv('MYSQL_PORT', '3306'))
     if not all([mysql_host, mysql_user, mysql_password, mysql_database]):
         return None
+
     return {
         'host': mysql_host,
         'port': mysql_port,

@@ -168,3 +168,4 @@ MYSQL_DATABASE=xhs_spider
 ### 运行前依赖提示
 - 必须先执行 `npm install`，否则会报 `Cannot find module 'crypto-js'`。
 - MySQL 模式下会自动 `CREATE DATABASE IF NOT EXISTS`，但前提是数据库账号有建库权限。
+
