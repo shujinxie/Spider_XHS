@@ -204,3 +204,9 @@ git rebase --continue
 git cherry-pick 0300042
 ```
 上面的 commit 是本项目“边爬边入库 + Excel 命名/切换”的提交。
+
+
+### Excel 实时落盘与前500导出
+- 当 `save_choice=excel` 或 `all` 时，抓到一条符合条件的笔记会立即追加到 Excel（即使后续报错，前面数据仍在）。
+- 主文件命名：`通胀文本xhs_开始日期.xlsx`。
+- 任务结束后会再按热度导出 Top500 到：`通胀文本xhs_开始日期_前500.xlsx`。

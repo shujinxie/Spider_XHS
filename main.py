@@ -4,7 +4,7 @@ from loguru import logger
 
 from apis.xhs_pc_apis import XHS_Apis
 from xhs_utils.common_util import init, load_mysql_config
-from xhs_utils.data_util import handle_note_info, handle_comment_info, download_note, save_to_xlsx
+from xhs_utils.data_util import handle_note_info, handle_comment_info, download_note, save_to_xlsx, append_to_xlsx
 from xhs_utils.mysql_util import save_notes_and_comments_to_mysql
 
 
@@ -143,27 +143,43 @@ class Data_Spider:
 
         note_list = []
         comment_list = []
+        fetched_success_count = 0
+        out_of_range_count = 0
         lowered_keywords = [k.strip().lower() for k in keywords if k.strip()]
 
         # Excel 文件命名：通胀文本xhs_开始日期
         excel_name = f'{excel_prefix}_{start_date}'
+        excel_file_path = os.path.abspath(os.path.join(base_path['excel'], f'{excel_name}.xlsx'))
+        excel_comment_file_path = os.path.abspath(os.path.join(base_path['excel'], f'{excel_name}_评论.xlsx'))
+
+        # 每次运行覆盖旧文件，避免重复追加历史数据
+        if save_choice in ['excel', 'all']:
+            for p in [excel_file_path, excel_comment_file_path]:
+                if os.path.exists(p):
+                    os.remove(p)
 
         for note_url in dedup_urls:
             success, msg, note_info = self.spider_note(note_url, cookies_str, proxies)
             if not success or not note_info:
                 continue
+            fetched_success_count += 1
 
             text_body = f"{note_info.get('title', '')} {note_info.get('desc', '')}".lower()
             keyword_hits = [k for k in lowered_keywords if k in text_body]
+            # 搜索结果已经按关键词召回，这里不再因为标题/描述未直接命中而丢弃
             if not keyword_hits:
-                continue
+                keyword_hits = ['search_result_match']
 
             upload_day = self._parse_upload_date(note_info['upload_time'])
             if not (start_day <= upload_day <= end_day):
+                out_of_range_count += 1
                 continue
 
             note_info['keyword_hits'] = keyword_hits
             note_list.append(note_info)
+
+            if save_choice in ['excel', 'all']:
+                append_to_xlsx(note_info, excel_file_path, type='note')
 
             current_comments = []
             if include_comments:
@@ -171,6 +187,9 @@ class Data_Spider:
                 if c_success:
                     current_comments = comments
                     comment_list.extend(comments)
+                    if save_choice in ['excel', 'all']:
+                        for comment in comments:
+                            append_to_xlsx(comment, excel_comment_file_path, type='comment')
                 else:
                     logger.warning(f"评论抓取失败 {note_url}: {c_msg}")
 
@@ -181,13 +200,19 @@ class Data_Spider:
                 save_notes_and_comments_to_mysql([note_info], current_comments, mysql_config)
 
         note_list.sort(key=lambda n: self._heat_to_int(n.get('liked_count', 0)), reverse=True)
-        if len(note_list) > max_result_num:
+
+        if save_choice in ['excel', 'all'] and note_list:
+            top500_notes = note_list[:500]
+            top500_file_path = os.path.abspath(os.path.join(base_path['excel'], f'{excel_name}_前500.xlsx'))
+            save_to_xlsx(top500_notes, top500_file_path, type='note')
+
+        if save_choice not in ['excel', 'all'] and len(note_list) > max_result_num:
             note_list = note_list[:max_result_num]
             note_ids = {n['note_id'] for n in note_list}
             comment_list = [c for c in comment_list if c['note_id'] in note_ids]
 
         if not note_list:
-            logger.warning('未抓取到符合关键词与时间范围的笔记，跳过导出和入库。')
+            logger.warning(f'未抓取到符合关键词与时间范围的笔记，跳过导出和入库。抓取成功 {fetched_success_count} 条，其中超出时间范围 {out_of_range_count} 条。')
             return note_list, comment_list
 
         if save_choice in ['excel', 'all']:
