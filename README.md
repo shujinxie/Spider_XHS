@@ -170,7 +170,6 @@ MYSQL_DATABASE=xhs_spider
 - MySQL 模式下会自动 `CREATE DATABASE IF NOT EXISTS`，但前提是数据库账号有建库权限。
 
 
-
 ### 存储模式切换
 在 `main.py` 里通过 `storage_backend` 切换：`mysql / excel / all / media`。
 
@@ -205,4 +204,3 @@ git rebase --continue
 git cherry-pick 0300042
 ```
 上面的 commit 是本项目“边爬边入库 + Excel 命名/切换”的提交。
-
