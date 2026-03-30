@@ -80,6 +80,26 @@ class Data_Spider:
         except Exception:
             return 0
 
+    @staticmethod
+    def _extract_search_note_day(note: dict):
+        """
+        尝试从搜索结果里提取发布时间（无需二次详情请求）。
+        成功则返回 date，失败返回 None。
+        """
+        ts = None
+        if isinstance(note, dict):
+            note_card = note.get('note_card', {}) if isinstance(note.get('note_card', {}), dict) else {}
+            ts = note_card.get('time') or note.get('time')
+        if ts is None:
+            return None
+        try:
+            ts = int(ts)
+            if ts < 10**11:
+                ts *= 1000
+            return datetime.fromtimestamp(ts / 1000).date()
+        except Exception:
+            return None
+
     def spider_topic_notes(
         self,
         keywords: list,
@@ -111,6 +131,8 @@ class Data_Spider:
 
         candidate_urls = []
         failed_msgs = []
+        skipped_out_of_range_in_search = 0
+        skipped_no_time_in_search = 0
         for keyword in keywords:
             success, msg, notes = self.xhs_apis.search_some_note(
                 query=keyword,
@@ -130,6 +152,13 @@ class Data_Spider:
                 continue
             note_items = [n for n in notes if n.get('model_type') == 'note']
             for note in note_items:
+                post_day = self._extract_search_note_day(note)
+                if post_day is None:
+                    skipped_no_time_in_search += 1
+                    continue
+                if not (start_day <= post_day <= end_day):
+                    skipped_out_of_range_in_search += 1
+                    continue
                 candidate_urls.append(f"https://www.xiaohongshu.com/explore/{note['id']}?xsec_token={note['xsec_token']}")
 
 
@@ -139,7 +168,11 @@ class Data_Spider:
             )
 
         dedup_urls = list(dict.fromkeys(candidate_urls))
-        logger.info(f'候选笔记数量（去重后）: {len(dedup_urls)}')
+        logger.info(
+            f'时间预筛后候选笔记数量（去重后）: {len(dedup_urls)}，'
+            f'搜索阶段超出时间范围跳过: {skipped_out_of_range_in_search}，'
+            f'搜索阶段无时间字段跳过: {skipped_no_time_in_search}'
+        )
 
         note_list = []
         comment_list = []
