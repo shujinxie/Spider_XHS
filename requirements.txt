@@ -4,3 +4,4 @@ loguru
 python-dotenv
 retry
 openpyxl
+pymysql
